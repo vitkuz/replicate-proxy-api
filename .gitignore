@@ -1,0 +1,6 @@
+node_modules
+lambda-layer
+dist
+scripts
+.idea
+cdk.out
