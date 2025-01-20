@@ -20,7 +20,7 @@ export async function downloadAndUploadToS3(imageUrl: string, jobId: string): Pr
         const extension = imageUrl.split('.').pop() || 'jpg';
         const filename = `${uuidv4()}.${extension}`;
         const datePath = getDateBasedPath();
-        const key = `${jobId}/${datePath}/${filename}`;
+        const key = `${datePath}/${filename}`;
 
         // Upload to S3
         await s3.send(new PutObjectCommand({

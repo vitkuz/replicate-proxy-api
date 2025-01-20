@@ -35,16 +35,16 @@ export async function getJob(id: string): Promise<JobRecord | null> {
     return unmarshall(response.Item) as JobRecord;
 }
 
-export async function updateJobStatus(id: string, status: string, output?: unknown): Promise<void> {
+export async function updateJobStatus(id: string, status: string, output?: unknown, error?: string): Promise<void> {
+    //todo: record error
     const updateExpression = output
         ? 'SET #status = :status, #output = :output'
         : 'SET #status = :status';
 
-
     const expressionAttributeNames = {
         '#status': 'status',
         // @ts-ignore
-        ...(output && { '#output': 'output' })
+        ...(output && { '#output': 'output' }),
     };
 
     const expressionAttributeValues = {

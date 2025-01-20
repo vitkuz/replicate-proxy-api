@@ -16,10 +16,10 @@ async function pollPredictionStatus(jobId: string, currentStatus: JobStatus): Pr
     const startTime = Date.now();
 
     while (Date.now() - startTime < MAX_POLLING_TIME) {
-        const { status, output } = await getPredictionStatus(jobId);
+        const { status, output, error } = await getPredictionStatus(jobId);
 
         if (status !== currentStatus) {
-            await updateJobStatus(jobId, status, output); //todo: record error
+            await updateJobStatus(jobId, status, output, error); //todo: record error
 
             if (status === JobStatus.SUCCEEDED && Array.isArray(output)) {
                 const s3Urls = await Promise.all(
