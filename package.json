@@ -4,12 +4,14 @@
   "scripts": {
     "test": "jest",
     "cdk": "cdk deploy -y",
+    "build:and:deploy": "npm run build && npm run cdk",
     "build": "tsc",
     "watch": "tsc -w",
     "create-layer": "node scripts/create-layer.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.726.1",
+    "@aws-sdk/client-s3": "^3.731.1",
     "@aws-sdk/client-ssm": "^3.525.0",
     "@aws-sdk/util-dynamodb": "^3.726.1",
     "aws-cdk-lib": "^2.130.0",
