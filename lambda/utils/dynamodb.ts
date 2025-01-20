@@ -36,22 +36,32 @@ export async function getJob(id: string): Promise<JobRecord | null> {
 }
 
 export async function updateJobStatus(id: string, status: string, output?: unknown, error?: string): Promise<void> {
-    //todo: record error
-    const updateExpression = output
-        ? 'SET #status = :status, #output = :output'
-        : 'SET #status = :status';
-
-    const expressionAttributeNames = {
-        '#status': 'status',
-        // @ts-ignore
-        ...(output && { '#output': 'output' }),
+    // Build update expression parts
+    const updates: string[] = ['#status = :status'];
+    const expressionAttributeNames: Record<string, string> = {
+        '#status': 'status'
+    };
+    const expressionAttributeValues: Record<string, unknown> = {
+        ':status': status
     };
 
-    const expressionAttributeValues = {
-        ':status': status,
-        // @ts-ignore
-        ...(output && { ':output': output })
-    };
+    // Add output if provided
+    if (output !== undefined) {
+        updates.push('#output = :output');
+        expressionAttributeNames['#output'] = 'output';
+        expressionAttributeValues[':output'] = output;
+    }
+
+    // Add error if provided
+    if (error !== undefined) {
+        updates.push('#error = :error');
+        expressionAttributeNames['#error'] = 'error';
+        expressionAttributeValues[':error'] = error;
+    }
+
+    // Combine all updates into final expression
+    const updateExpression = `SET ${updates.join(', ')}`;
+
 
     await dynamodb.send(new UpdateItemCommand({
         TableName: TABLE_NAME,
