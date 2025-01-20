@@ -4,7 +4,7 @@ import axios from 'axios';
 import {v4 as uuidv4} from 'uuid';
 import {getJob, putJob} from './utils/dynamodb';
 
-const REPLICATE_API_BASE = 'https://api.replicate.com/v1';
+const REPLICATE_API_BASE =  process.env.REPLICATE_API_BASE || 'https://api.replicate.com/v1';
 
 const DEFAULT_HEADERS = (requestId: string) => ({
   'Access-Control-Allow-Origin': '*',
@@ -60,8 +60,8 @@ interface ReplicateResponse {
   error?: string;
 }
 
-const ssm = new SSMClient({});
-let cachedApiToken: string | undefined;
+// const ssm = new SSMClient({});
+// let cachedApiToken: string | undefined;
 
 async function recordJob(id: string, input: ReplicateRequest, output: unknown, status: string): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
@@ -77,25 +77,26 @@ async function recordJob(id: string, input: ReplicateRequest, output: unknown, s
   });
 }
 
-async function getApiToken(): Promise<string> {
-  if (cachedApiToken) {
-    return cachedApiToken;
-  }
-
-  const parameterResponse = await ssm.send(
-      new GetParameterCommand({
-        Name: process.env.REPLICATE_API_TOKEN,
-        WithDecryption: true,
-      })
-  );
-
-  if (!parameterResponse.Parameter?.Value) {
-    throw new Error('API token not found');
-  }
-
-  cachedApiToken = parameterResponse.Parameter.Value;
-  return cachedApiToken as string;
-}
+// do not delete move into separate
+// async function getApiToken(): Promise<string> {
+//   if (cachedApiToken) {
+//     return cachedApiToken;
+//   }
+//
+//   const parameterResponse = await ssm.send(
+//       new GetParameterCommand({
+//         Name: process.env.REPLICATE_API_TOKEN,
+//         WithDecryption: true,
+//       })
+//   );
+//
+//   if (!parameterResponse.Parameter?.Value) {
+//     throw new Error('API token not found');
+//   }
+//
+//   cachedApiToken = parameterResponse.Parameter.Value;
+//   return cachedApiToken as string;
+// }
 
 async function startPrediction(apiToken: string, replicateRequest: ReplicateRequest, requestId: string): Promise<ReplicateResponse> {
   return (await axios.post(
@@ -112,18 +113,19 @@ async function startPrediction(apiToken: string, replicateRequest: ReplicateRequ
   )).data;
 }
 
-async function getPredictionStatus(apiToken: string, predictionId: string, requestId: string): Promise<ReplicateResponse> {
-  return (await axios.get(
-      `${REPLICATE_API_BASE}/predictions/${predictionId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'X-Request-ID': requestId,
-          'X-Proxy-Timestamp': new Date().toISOString(),
-        },
-      }
-  )).data;
-}
+// todo: do not delete, move it in service
+// async function getPredictionStatus(apiToken: string, predictionId: string, requestId: string): Promise<ReplicateResponse> {
+//   return (await axios.get(
+//       `${REPLICATE_API_BASE}/predictions/${predictionId}`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${apiToken}`,
+//           'X-Request-ID': requestId,
+//           'X-Proxy-Timestamp': new Date().toISOString(),
+//         },
+//       }
+//   )).data;
+// }
 
 export const handler = async (
     event: APIGatewayProxyEvent
@@ -136,11 +138,16 @@ export const handler = async (
 
   try {
     // Get API token from SSM
-    const apiToken = await getApiToken();
+    const apiToken = process.env.REPLICATE_API_TOKEN as string;
+
+    if (!apiToken) {
+      throw new Error('REPLICATE_API_TOKEN environment variable is not set');
+    }
 
     // If predictionId is provided, get prediction status
     if (predictionId) {
       const job = await getJob(predictionId);
+      console.log(JSON.stringify(job, null , 2))
 
       if (!job) {
         return {

@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+// import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -9,10 +9,17 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from 'constructs';
 import * as path from 'path';
+import 'dotenv/config'
 
 export class ReplicateProxyApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+    // Get the actual token value
+    const replicateTokenValue = process.env.REPLICATE_TOKEN_VALUE;
+
+    if (!replicateTokenValue) {
+      throw new Error('REPLICATE_TOKEN_VALUE')
+    }
 
     // Create S3 bucket for storing images
     const imagesBucket = new s3.Bucket(this, 'ReplicateImagesBucket', {
@@ -56,6 +63,8 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       layers: [layer],
       code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
       environment: {
+        REPLICATE_API_BASE: 'https://api.replicate.com/v1',
+        REPLICATE_API_TOKEN: replicateTokenValue, //!
         REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
         IMAGES_BUCKET: imagesBucket.bucketName,
         DEPLOY_TIME: `${Date.now()}`
@@ -74,22 +83,12 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       batchSize: 1, // Optional: Customize the batch size for processing
     }));
 
-    // Add CloudWatch Logs permissions
+    // Add CloudWatch Logs permissions //todo: probably i dont need all that
     downloadImagesHandler.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
       resources: ['*'],
     }));
-
-    // Get Replicate API token from SSM Parameter Store
-    const replicateApiToken = ssm.StringParameter.fromSecureStringParameterAttributes(
-        this,
-        'ReplicateApiToken',
-        {
-          parameterName: '/replicate/api-token',
-          version: 1,
-        }
-    );
 
     // Create Lambda function
     const handler = new lambda.Function(this, 'ReplicateHandler', {
@@ -100,10 +99,10 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       ],
       code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
       environment: {
-        REPLICATE_API_TOKEN: replicateApiToken.parameterName,
+        REPLICATE_API_BASE: 'https://api.replicate.com/v1',
+        REPLICATE_API_TOKEN: replicateTokenValue,
         REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
         DEPLOY_TIME: `${Date.now()}`,
-        DOWNLOAD_IMAGES_FUNCTION: downloadImagesHandler.functionName
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -111,17 +110,17 @@ export class ReplicateProxyApiStack extends cdk.Stack {
     });
 
     // Add explicit SSM parameter read permissions
-    handler.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        'ssm:GetParameter',
-        'ssm:GetParameters'
-      ],
-      resources: [replicateApiToken.parameterArn],
-    }));
+    // handler.addToRolePolicy(new iam.PolicyStatement({
+    //   effect: iam.Effect.ALLOW,
+    //   actions: [
+    //     'ssm:GetParameter',
+    //     'ssm:GetParameters'
+    //   ],
+    //   resources: [replicateApiToken.parameterArn],
+    // }));
 
     // Grant Lambda permission to read SSM parameter
-    replicateApiToken.grantRead(handler);
+    // replicateApiToken.grantRead(handler);
     replicateProxyTable.grantReadWriteData(handler)
 
     // Create API Gateway

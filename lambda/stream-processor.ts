@@ -14,9 +14,10 @@ enum JobStatus {
     FAILED = 'failed'
 }
 
-const REPLICATE_API_BASE = 'https://api.replicate.com/v1';
+const REPLICATE_API_BASE =  process.env.REPLICATE_API_BASE || 'https://api.replicate.com/v1';
 const s3 = new S3Client({});
 const BUCKET_NAME = process.env.IMAGES_BUCKET!;
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN!;
 const MAX_POLLING_TIME = 120000; // 2 minutes in milliseconds
 const POLLING_INTERVAL = 3000; // 3 seconds
 
@@ -25,10 +26,11 @@ async function getPredictionStatus(predictionId: string): Promise<{ status: JobS
         `${REPLICATE_API_BASE}/predictions/${predictionId}`,
         {
             headers: {
-                Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN!}`,
+                Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
             },
         }
     );
+    console.log('getPredictionStatus',JSON.stringify(response.data), null, 2)
     return {
         status: response.data.status as JobStatus,
         output: response.data.output
@@ -42,7 +44,7 @@ async function pollPredictionStatus(jobId: string, currentStatus: JobStatus): Pr
         const { status, output } = await getPredictionStatus(jobId);
 
         if (status !== currentStatus) {
-            await updateJobStatus(jobId, status, output);
+            await updateJobStatus(jobId, status, output); //todo: record error
 
             if (status === JobStatus.SUCCEEDED && Array.isArray(output)) {
                 const s3Urls = await Promise.all(
