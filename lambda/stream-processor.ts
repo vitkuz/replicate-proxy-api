@@ -1,41 +1,16 @@
-import { Context, DynamoDBStreamEvent } from 'aws-lambda';
+import {Context, DynamoDBStreamEvent} from 'aws-lambda';
 import axios from 'axios';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
-import { unmarshall } from '@aws-sdk/util-dynamodb';
-import { updateJobImages, updateJobStatus } from './utils/dynamodb';
-import { JobRecord } from './utils/dynamodb';
+import {PutObjectCommand, S3Client} from '@aws-sdk/client-s3';
+import {v4 as uuidv4} from 'uuid';
+import {unmarshall} from '@aws-sdk/util-dynamodb';
+import {JobRecord, updateJobImages, updateJobStatus} from './utils/dynamodb';
 import {AttributeValue} from "@aws-sdk/client-dynamodb";
+import {JobStatus, ReplicateResponse} from "./types";
+import {downloadAndUploadToS3} from "./services/s3";
+import {getPredictionStatus} from "./services/replicate";
 
-enum JobStatus {
-    STARTING = 'starting',
-    PROCESSING = 'processing',
-    SUCCEEDED = 'succeeded',
-    FAILED = 'failed'
-}
-
-const REPLICATE_API_BASE =  process.env.REPLICATE_API_BASE || 'https://api.replicate.com/v1';
-const s3 = new S3Client({});
-const BUCKET_NAME = process.env.IMAGES_BUCKET!;
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN!;
 const MAX_POLLING_TIME = 120000; // 2 minutes in milliseconds
 const POLLING_INTERVAL = 3000; // 3 seconds
-
-async function getPredictionStatus(predictionId: string): Promise<{ status: JobStatus; output?: unknown }> {
-    const response = await axios.get(
-        `${REPLICATE_API_BASE}/predictions/${predictionId}`,
-        {
-            headers: {
-                Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
-            },
-        }
-    );
-    console.log('getPredictionStatus',JSON.stringify(response.data), null, 2)
-    return {
-        status: response.data.status as JobStatus,
-        output: response.data.output
-    };
-}
 
 async function pollPredictionStatus(jobId: string, currentStatus: JobStatus): Promise<void> {
     const startTime = Date.now();
@@ -62,39 +37,6 @@ async function pollPredictionStatus(jobId: string, currentStatus: JobStatus): Pr
         }
 
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
-    }
-}
-
-function getDateBasedPath(): string {
-    const now = new Date();
-    return `${now.getUTCFullYear()}/${(now.getUTCMonth() + 1).toString().padStart(2, '0')}/${now.getUTCDate().toString().padStart(2, '0')}`;
-}
-
-async function downloadAndUploadToS3(imageUrl: string, jobId: string): Promise<string> {
-    try {
-        // Download image
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-        const buffer = Buffer.from(response.data);
-
-        // Generate unique filename with date-based path
-        const extension = imageUrl.split('.').pop() || 'jpg';
-        const filename = `${uuidv4()}.${extension}`;
-        const datePath = getDateBasedPath();
-        const key = `${jobId}/${datePath}/${filename}`;
-
-        // Upload to S3
-        await s3.send(new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: key,
-            Body: buffer,
-            ContentType: `image/${extension}`,
-        }));
-
-        // Return S3 URL
-        return `s3://${BUCKET_NAME}/${key}`;
-    } catch (error) {
-        console.error('Failed to process image', error);
-        throw error;
     }
 }
 

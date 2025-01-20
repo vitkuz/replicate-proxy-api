@@ -1,71 +1,13 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import {SSMClient, GetParameterCommand} from '@aws-sdk/client-ssm';
-import axios from 'axios';
+import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 import {v4 as uuidv4} from 'uuid';
 import {getJob, putJob} from './utils/dynamodb';
-
-const REPLICATE_API_BASE =  process.env.REPLICATE_API_BASE || 'https://api.replicate.com/v1';
-
-const DEFAULT_HEADERS = (requestId: string) => ({
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'OPTIONS,POST',
-  'X-Request-ID': requestId,
-  'X-Proxy-Timestamp': new Date().toISOString(),
-});
-
-const DEFAULT_REPLICATE_VERSION = '70a95a700a394552368f765fee2e22aa77d6addb933ba3ad914683c5e11940e1';
-
-const DEFAULT_INPUT_PARAMS: ReplicateInput = {
-  model: 'dev',
-  go_fast: false,
-  lora_scale: 1,
-  megapixels: '1',
-  num_outputs: 1,
-  aspect_ratio: '1:1',
-  output_format: 'jpg',
-  guidance_scale: 3,
-  output_quality: 80,
-  prompt_strength: 0.8,
-  extra_lora_scale: 1,
-  num_inference_steps: 28,
-};
-
-interface ReplicateInput {
-  model: string;
-  go_fast: boolean;
-  lora_scale: number;
-  megapixels: string;
-  num_outputs: number;
-  aspect_ratio: string;
-  output_format: string;
-  guidance_scale: number;
-  output_quality: number;
-  prompt_strength: number;
-  extra_lora_scale: number;
-  num_inference_steps: number;
-  [key: string]: unknown; // Allow additional properties
-}
-
-interface ReplicateRequest {
-  version: string;
-  input: ReplicateInput;
-}
-
-interface ReplicateResponse {
-  input: ReplicateRequest;
-  id: string;
-  status: 'starting' | 'processing' | 'succeeded' | 'failed';
-  output?: unknown;
-  error?: string;
-}
-
-// const ssm = new SSMClient({});
-// let cachedApiToken: string | undefined;
+import {ReplicateRequest} from "./types";
+import {startPrediction} from "./services/replicate";
+import {DEFAULT_HEADERS, DEFAULT_INPUT_PARAMS, DEFAULT_REPLICATE_VERSION} from "./const";
 
 async function recordJob(id: string, input: ReplicateRequest, output: unknown, status: string): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
-  const ttl = now + (7 * 24 * 60 * 60); // 7 days retention
+  // const ttl = now + (7 * 24 * 60 * 60); // 7 days retention
 
   await putJob({
     id,
@@ -76,56 +18,6 @@ async function recordJob(id: string, input: ReplicateRequest, output: unknown, s
     // ttl,
   });
 }
-
-// do not delete move into separate
-// async function getApiToken(): Promise<string> {
-//   if (cachedApiToken) {
-//     return cachedApiToken;
-//   }
-//
-//   const parameterResponse = await ssm.send(
-//       new GetParameterCommand({
-//         Name: process.env.REPLICATE_API_TOKEN,
-//         WithDecryption: true,
-//       })
-//   );
-//
-//   if (!parameterResponse.Parameter?.Value) {
-//     throw new Error('API token not found');
-//   }
-//
-//   cachedApiToken = parameterResponse.Parameter.Value;
-//   return cachedApiToken as string;
-// }
-
-async function startPrediction(apiToken: string, replicateRequest: ReplicateRequest, requestId: string): Promise<ReplicateResponse> {
-  return (await axios.post(
-      `${REPLICATE_API_BASE}/predictions`,
-      replicateRequest,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-          'X-Request-ID': requestId,
-          'X-Proxy-Timestamp': new Date().toISOString(),
-        },
-      }
-  )).data;
-}
-
-// todo: do not delete, move it in service
-// async function getPredictionStatus(apiToken: string, predictionId: string, requestId: string): Promise<ReplicateResponse> {
-//   return (await axios.get(
-//       `${REPLICATE_API_BASE}/predictions/${predictionId}`,
-//       {
-//         headers: {
-//           Authorization: `Bearer ${apiToken}`,
-//           'X-Request-ID': requestId,
-//           'X-Proxy-Timestamp': new Date().toISOString(),
-//         },
-//       }
-//   )).data;
-// }
 
 export const handler = async (
     event: APIGatewayProxyEvent
