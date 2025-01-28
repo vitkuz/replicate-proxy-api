@@ -4,7 +4,7 @@ import {v4 as uuidv4} from "uuid";
 import {Logger} from "../utils/logger";
 
 export const s3 = new S3Client({});
-export const BUCKET_NAME = process.env.IMAGES_BUCKET!;
+export const BUCKET_NAME = process.env.BUCKET_NAME!;
 const logger = new Logger({ functionName: 's3' });
 
 export function getDateBasedPath(): string {

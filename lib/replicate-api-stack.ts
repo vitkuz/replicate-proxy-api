@@ -1,15 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-// import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from 'constructs';
+import * as sns from 'aws-cdk-lib/aws-sns';
 import * as path from 'path';
 import 'dotenv/config'
+import {BUCKET_NAME} from "../lambda/services/s3";
 
 export class ReplicateProxyApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -21,15 +22,37 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       throw new Error('REPLICATE_TOKEN_VALUE')
     }
 
+    // SNS Topic
+    const topic = new sns.Topic(this, 'TaskEventsTopic');
+
+    // todo: add sqs to track notifications
+
     // Create S3 bucket for storing images
     const imagesBucket = new s3.Bucket(this, 'ReplicateImagesBucket', {
+      publicReadAccess: true,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        blockPublicPolicy: false,
+        ignorePublicAcls: false,
+        restrictPublicBuckets: false
+      }),
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      // autoDeleteObjects: true,
+      autoDeleteObjects: true,
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+          ],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+        },
+      ],
       encryption: s3.BucketEncryption.S3_MANAGED,
-      // enforceSSL: true,
       lifecycleRules: [
         {
-          // expiration: cdk.Duration.days(7),
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
@@ -38,6 +61,14 @@ export class ReplicateProxyApiStack extends cdk.Stack {
           ],
         },
       ],
+    });
+
+    // DynamoDB Table
+    const tasksTable = new dynamodb.Table(this, 'TasksTable', {
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development only
     });
 
     // Create DynamoDB table
@@ -109,18 +140,6 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_DAY,
     });
 
-    // Add explicit SSM parameter read permissions
-    // handler.addToRolePolicy(new iam.PolicyStatement({
-    //   effect: iam.Effect.ALLOW,
-    //   actions: [
-    //     'ssm:GetParameter',
-    //     'ssm:GetParameters'
-    //   ],
-    //   resources: [replicateApiToken.parameterArn],
-    // }));
-
-    // Grant Lambda permission to read SSM parameter
-    // replicateApiToken.grantRead(handler);
     replicateProxyTable.grantReadWriteData(handler)
 
     // Create API Gateway
@@ -150,6 +169,96 @@ export class ReplicateProxyApiStack extends cdk.Stack {
     // Add POST method to root resource
     api.root.addMethod('POST', integration);
     api.root.addMethod('GET', integration);
+    api.root.addMethod('DELETE', integration);
+    api.root.addMethod('PUT', integration);
+
+
+    ///
+
+    const commonLambdaProps = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      // handler: 'index.handler',
+      layers:[
+        layer
+      ],
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda/handlers')),
+      environment: {
+        REPLICATE_API_BASE: 'https://api.replicate.com/v1',
+        REPLICATE_API_TOKEN: replicateTokenValue,
+        REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
+        DEPLOY_TIME: `${Date.now()}`,
+        //
+        TABLE_NAME: tasksTable.tableName,
+        TOPIC_ARN: topic.topicArn,
+        BUCKET_NAME: imagesBucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_DAY,
+    };
+
+    const createTaskFn = new lambda.Function(this, 'CreateTaskFn', {
+      ...commonLambdaProps,
+      handler: 'createTask.handler',
+    });
+
+    const listTasksFn = new lambda.Function(this, 'ListTaskFn', {
+      ...commonLambdaProps,
+      handler: 'listTasks.handler',
+    });
+
+    const getTaskFn = new lambda.Function(this, 'GetTaskFn', {
+      ...commonLambdaProps,
+      handler: 'getTask.handler',
+    });
+
+    const updateTaskFn = new lambda.Function(this, 'UpdateTaskFn', {
+      ...commonLambdaProps,
+      handler: 'updateTask.handler',
+    });
+
+    const deleteTaskFn = new lambda.Function(this, 'DeleteTaskFn', {
+      ...commonLambdaProps,
+      handler: 'deleteTask.handler'
+    });
+
+    const webhookFn = new lambda.Function(this, 'WebhookFn', {
+      ...commonLambdaProps,
+      handler: 'webhook.handler'
+    });
+
+    const streamProcessorFn = new lambda.Function(this, 'StreamProcessorFn', {
+      ...commonLambdaProps,
+      timeout: cdk.Duration.seconds(900),
+      handler: 'streamProcessor.handler'
+    });
+
+    tasksTable.grantReadWriteData(createTaskFn);
+    tasksTable.grantReadData(getTaskFn);
+    tasksTable.grantReadWriteData(updateTaskFn);
+    tasksTable.grantReadData(listTasksFn);
+    tasksTable.grantReadWriteData(deleteTaskFn);
+    topic.grantPublish(streamProcessorFn);
+
+    streamProcessorFn.addEventSource(new lambdaEventSources.DynamoEventSource(tasksTable, {
+      startingPosition: lambda.StartingPosition.LATEST,
+      batchSize: 1, // Optional: Customize the batch size for processing
+    }));
+
+    tasksTable.grantReadWriteData(streamProcessorFn);
+    imagesBucket.grantReadWrite(streamProcessorFn);
+
+    const tasks = api.root.addResource('tasks');
+    const task = tasks.addResource('{id}');
+    const webhook = api.root.addResource('webhook');
+
+    // API Routes
+    tasks.addMethod('POST', new apigateway.LambdaIntegration(createTaskFn));
+    tasks.addMethod('GET', new apigateway.LambdaIntegration(listTasksFn));
+    task.addMethod('GET', new apigateway.LambdaIntegration(getTaskFn));
+    task.addMethod('PUT', new apigateway.LambdaIntegration(updateTaskFn));
+    task.addMethod('DELETE', new apigateway.LambdaIntegration(deleteTaskFn));
+    webhook.addMethod('POST', new apigateway.LambdaIntegration(webhookFn));
 
     // Add useful stack outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {

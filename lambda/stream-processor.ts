@@ -1,7 +1,4 @@
 import {Context, DynamoDBStreamEvent} from 'aws-lambda';
-import axios from 'axios';
-import {PutObjectCommand, S3Client} from '@aws-sdk/client-s3';
-import {v4 as uuidv4} from 'uuid';
 import {unmarshall} from '@aws-sdk/util-dynamodb';
 import {JobRecord, updateJobImages, updateJobStatus} from './utils/dynamodb';
 import {AttributeValue} from "@aws-sdk/client-dynamodb";
