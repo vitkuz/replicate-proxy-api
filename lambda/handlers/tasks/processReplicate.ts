@@ -16,30 +16,20 @@ export async function processReplicateTask(task: Task): Promise<void> {
             updatedAt: Date.now()
         });
 
-        const version = task.input.version;
-        const input = task.input.input;
-
-        const replicateResponse = await replicate.run(version, { input });
+        const response = await getReplicateResponse(task);
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.SUCCEEDED,
-            output: replicateResponse,
+            output: response,
             updatedAt: Date.now()
         });
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.SUCCEEDED,
-            output: replicateResponse,
+            output: response,
             updatedAt: Date.now()
         });
 
-        if (task.webhookUrl) {
-            await sendWebhookNotification(task.webhookUrl, {
-                taskId: task.id,
-                status: TaskStatus.SUCCEEDED,
-                output: replicateResponse
-            });
-        }
     } catch (error) {
         console.error('Error processing Replicate task:', error);
 
@@ -49,14 +39,6 @@ export async function processReplicateTask(task: Task): Promise<void> {
             output: null,
             updatedAt: Date.now()
         });
-
-        if (task.webhookUrl) {
-            await sendWebhookNotification(task.webhookUrl, {
-                taskId: task.id,
-                status: TaskStatus.FAILED,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-        }
 
         throw error;
     }

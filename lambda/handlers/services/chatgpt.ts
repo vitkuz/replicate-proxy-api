@@ -1,8 +1,7 @@
 import OpenAI from 'openai';
-import { ChatGPTInput } from '../types';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
-const DEFAULT_MODEL = 'gpt-4-turbo-preview';
+const DEFAULT_MODEL = 'o4';
 
 const openai = new OpenAI({
     apiKey: OPENAI_API_KEY
