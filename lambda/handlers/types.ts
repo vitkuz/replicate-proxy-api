@@ -1,7 +1,60 @@
+export enum TaskStatus {
+    STARTING = 'starting',
+    PROCESSING = 'processing',
+    SUCCEEDED = 'succeeded',
+    FAILED = 'failed'
+}
+
+export enum TaskType {
+    REPLICATE = 'replicate',
+    ELEVENLABS = 'elevenlabs',
+    CHATGPT = 'chatgpt',
+    PERPLEXITY = 'perplexity'
+}
+
+export enum StreamEventType {
+    INSERT = 'INSERT',
+    MODIFY = 'MODIFY',
+    REMOVE = 'REMOVE'
+}
+
+export interface ElevenLabsInput {
+    text: string;
+    voiceId?: string;
+    modelId?: string;
+    stability?: number;
+    similarityBoost?: number;
+}
+
+export interface ChatGPTInput {
+    messages: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+    }>;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+}
+
+export interface PerplexityInput {
+    messages: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+    }>;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    topK?: number;
+}
+
 export interface Task {
     id: string;
-    taskType: 'replicate';
-    status: 'starting' | 'processing' | 'succeeded' | 'failed';
+    taskType: TaskType;
+    status: TaskStatus;
     createdAt: number;
     updatedAt: number;
     input: Record<string, any>;
@@ -11,14 +64,14 @@ export interface Task {
 }
 
 export interface TaskInput {
-    taskType: 'replicate';
+    taskType: TaskType;
     input: Record<string, any>;
     webhookUrl?: string;
 }
 
 export interface TaskUpdate {
-    taskType?: string;
-    status?: 'starting' | 'processing' | 'succeeded' | 'failed';
+    taskType?: TaskType;
+    status?: TaskStatus;
     payload?: Record<string, any>;
     result?: any;
     error?: string;
@@ -38,7 +91,7 @@ export interface SuccessResponse<T> {
 export type ApiResponse<T> = ErrorResponse | SuccessResponse<T>;
 
 export interface StreamEvent {
-    eventName: 'INSERT' | 'MODIFY' | 'REMOVE';
+    eventName: StreamEventType;
     dynamodb: {
         NewImage?: any;
         OldImage?: any;
@@ -70,7 +123,7 @@ export interface ReplicateRequest {
 export interface ReplicateResponse {
     input: ReplicateRequest;
     id: string;
-    status: 'starting' | 'processing' | 'succeeded' | 'failed';
+    status: TaskStatus;
     output?: unknown;
     error?: string;
 }
