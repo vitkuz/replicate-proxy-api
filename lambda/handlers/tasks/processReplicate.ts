@@ -1,13 +1,6 @@
 import {Task, TaskStatus} from "../types";
 import {partialUpdateRecord} from "../services/dynamo";
-import {sendWebhookNotification} from "../utils/webhook";
-import Replicate from "replicate";
-
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN!;
-
-const replicate = new Replicate({
-    auth: REPLICATE_API_TOKEN,
-});
+import {getReplicateResponse} from "../services/replicate";
 
 export async function processReplicateTask(task: Task): Promise<void> {
     try {

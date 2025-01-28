@@ -57,7 +57,7 @@ export interface Task {
     status: TaskStatus;
     createdAt: number;
     updatedAt: number;
-    input: Record<string, any>;
+    input: any; // todo: change it to possible inputs
     output?: any;
     error?: string;
     webhookUrl?: string;

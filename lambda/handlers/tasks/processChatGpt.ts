@@ -9,7 +9,7 @@ export async function processChatGPTTask(task: Task): Promise<void> {
             updatedAt: Date.now()
         });
 
-        const response = await generateChatResponse(task.input);
+        const response = await generateChatResponse(task);
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.SUCCEEDED,

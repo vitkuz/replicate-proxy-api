@@ -1,7 +1,7 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 import { v4 as uuidv4 } from 'uuid';
 import { createRecord } from './services/dynamo';
-import { Task, TaskInput } from './types';
+import {Task, TaskInput, TaskStatus, TaskType} from './types';
 import { validateTaskInput } from './utils/validation';
 import {getDefaultsHeaders} from "./const";
 
@@ -36,8 +36,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         const now = Date.now();
         const task: Task = {
             id: uuidv4(),
-            taskType: 'replicate',
-            status: 'starting',
+            taskType: TaskType.REPLICATE, // todo: change this to the actual task type
+            status: TaskStatus.STARTING,
             createdAt: now,
             updatedAt: now,
             input: taskInput.input,
