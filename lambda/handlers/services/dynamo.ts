@@ -72,7 +72,7 @@ export async function createRecord(record: DynamoRecord): Promise<DynamoRecord> 
 }
 
 export async function partialUpdateRecord(id: string, updates: Partial<DynamoRecord>): Promise<DynamoRecord> {
-    console.log('partialUpdateRecord called with id:', id, 'updates:', updates);
+    console.log('partialUpdateRecord', JSON.stringify({ id, updates }, null, 2));
     const updateExpressions: string[] = [];
     const expressionAttributeNames: { [key: string]: string } = {};
     const expressionAttributeValues: { [key: string]: any } = {};
@@ -96,9 +96,11 @@ export async function partialUpdateRecord(id: string, updates: Partial<DynamoRec
         ReturnValues: 'ALL_NEW' as ReturnValue
     };
 
+    console.log('partialUpdateRecord params:', JSON.stringify(params, null, 2));
+
     try {
         const result = await docClient.send(new UpdateCommand(params));
-        console.log('partialUpdateRecord result:', result);
+        console.log('partialUpdateRecord result:', JSON.stringify(result, null, 2));
         return result.Attributes as DynamoRecord || {} as DynamoRecord;
     } catch (error) {
         console.error('Error in partialUpdateRecord:', error);

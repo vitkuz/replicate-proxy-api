@@ -1,0 +1,61 @@
+# @baseUrl = http://localhost:3000
+@baseUrl = https://j9y3r5j656.execute-api.us-east-1.amazonaws.com/prod
+
+### Create a new task minimax/video-01
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "taskType": "replicate:videos",
+  "input": {
+    "version": "minimax/video-01",
+    "input": {
+      "prompt": "hot russian blonde supermodel on black silver gradient studio background, camera zooms in on her blue eyes",
+      "prompt_optimizer": true
+    }
+  }
+}
+
+### @name getTask
+@taskId = 77ea78cf-1e2a-41c2-a48f-08cd2c5e2f8d
+GET {{baseUrl}}/tasks/{{taskId}}
+
+
+### Create a new task kwaivgi/kling-v1.6-pro
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "taskType": "replicate:videos",
+  "input": {
+    "version": "kwaivgi/kling-v1.6-pro",
+    "input": {
+      "prompt": "Reflections in crystal mirrors, rainbow light, geometric world",
+      "duration": 5,
+      "cfg_scale": 0.5,
+      "start_image": "https://vitkuzawscdkpagemanagerstack-bucket83908e77-nhqm7ery8kfq.s3.amazonaws.com/images/2025/01/19/94a699f0-535b-4847-befe-b52385046efb.jpg",
+      "aspect_ratio": "16:9",
+      "negative_prompt": ""
+    }
+  }
+}
+
+### Create a new task kwaivgi/kling-v1.6-pro
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "taskType": "replicate:videos",
+  "input": {
+    "version": "tencent/hunyuan-video:6c9132aee14409cd6568d030453f1ba50f5f3412b844fe67f78a9eb62d55664f",
+    "input": {
+      "fps": 24,
+      "width": 864,
+      "height": 480,
+      "prompt": "camera zooms in on a hot russian blonde supermodel on black silver gradient studio background",
+      "infer_steps": 50,
+      "video_length": 129,
+      "embedded_guidance_scale": 6
+    }
+  }
+}

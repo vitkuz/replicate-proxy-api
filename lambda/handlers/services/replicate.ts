@@ -41,7 +41,7 @@ function getContentType(extension: string): string {
 
 export async function saveReplicationVideoLocally(replicateResponse: ReadableStream): Promise<{ filename: string; ext: string }[]> {
     if (!replicateResponse) {
-        throw new Error("No valid response provided.");
+        throw new Error("No valid valid response.");
     }
 
     const savedFiles: { filename: string; ext: string }[] = [];
@@ -62,15 +62,15 @@ export async function saveReplicationVideoLocally(replicateResponse: ReadableStr
 
 // Function to Save Files Locally
 export async function saveReplicationFilesLocally(replicateResponse: string[]): Promise<{ filename: string; ext: string }[]> {
-    if (!Array.isArray(replicateResponse) || replicateResponse.length === 0) {
-        throw new Error("No valid URLs provided.");
+    if (!replicateResponse) {
+        throw new Error("No valid valid response.");
     }
 
+    const output = Array.isArray(replicateResponse) ? replicateResponse : [replicateResponse];
     const savedFiles: { filename: string; ext: string }[] = [];
 
-    for (let i = 0; i < replicateResponse.length; i++) {
-        const fileUrl = replicateResponse[i];
-        console.log(`Processing file URL: ${fileUrl}`);
+    for (let i = 0; i < output.length; i++) {
+        const fileUrl = output[i];
         try {
             console.log(`Downloading file ${i + 1}: ${fileUrl}`);
 

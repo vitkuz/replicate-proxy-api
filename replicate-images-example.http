@@ -1,0 +1,56 @@
+# @baseUrl = http://localhost:3000
+@baseUrl = https://j9y3r5j656.execute-api.us-east-1.amazonaws.com/prod
+
+### Create a new task vitkuz/lily
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "taskType": "replicate:images",
+  "input": {
+    "version": "vitkuz/lily:70a95a700a394552368f765fee2e22aa77d6addb933ba3ad914683c5e11940e1",
+    "input": {
+      "model": "dev",
+      "go_fast": false,
+      "lora_scale": 1,
+      "megapixels": "1",
+      "num_outputs": 2,
+      "aspect_ratio": "1:1",
+      "output_format": "jpg",
+      "guidance_scale": 3,
+      "output_quality": 100,
+      "prompt_strength": 0.8,
+      "extra_lora_scale": 1,
+      "num_inference_steps": 28,
+      "prompt": "russian stunning blonde supermodel on purple gradient studio background"
+    }
+  }
+}
+
+### Create a new task black-forest-labs/flux-pro
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "taskType": "replicate:images",
+  "input": {
+    "version": "black-forest-labs/flux-pro",
+    "input": {
+      "steps": 25,
+      "width": 1024,
+      "height": 1024,
+      "prompt": "russian stunning blonde supermodel on black silver gradient studio background",
+      "guidance": 3,
+      "interval": 2,
+      "aspect_ratio": "1:1",
+      "output_format": "jpg",
+      "output_quality": 80,
+      "safety_tolerance": 6,
+      "prompt_upsampling": false
+    }
+  }
+}
+
+### @name getTask
+@taskId = 77ea78cf-1e2a-41c2-a48f-08cd2c5e2f8d
+GET {{baseUrl}}/tasks/{{taskId}}

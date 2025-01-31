@@ -1,12 +1,15 @@
 import { DynamoDBStreamEvent } from 'aws-lambda';
 import { Task, StreamEvent, TaskType, TaskStatus, StreamEventType } from './types';
 import {unmarshall} from "@aws-sdk/util-dynamodb";
-import {processReplicateTask} from "./tasks/processReplicate";
+// import {processReplicateTask} from "./tasks/processReplicate";
 import {processElevenLabsTask} from "./tasks/processElevenlabs";
 import {processChatGPTTask} from "./tasks/processChatGpt";
-import {processMinimaxVideoTask} from "./tasks/processMinimaxVideo";
-import {processDeepSeekR1Task} from "./tasks/processDeepSeekR1";
-import {processKlingProTask} from "./tasks/processKlingPro";
+// import {processMinimaxVideoTask} from "./tasks/processMinimaxVideo";
+// import {processDeepSeekR1Task} from "./tasks/processDeepSeekR1";
+// import {processKlingProTask} from "./tasks/processKlingPro";
+import {processReplicateImagesTask} from "./tasks/processReplicateImages";
+import {processReplicateText} from "./tasks/processReplicateText";
+import {processReplicateVideo} from "./tasks/processReplicateVideo";
 
 export async function handler(event: DynamoDBStreamEvent): Promise<void> {
     try {
@@ -31,8 +34,14 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
             if (streamEvent.eventName === StreamEventType.INSERT) {
                 if (newTask) {
                     switch (newTask.taskType) {
-                        case TaskType.REPLICATE:
-                            await processReplicateTask(newTask);
+                        case TaskType.REPLICATE_IMAGES:
+                            await processReplicateImagesTask(newTask);
+                            break;
+                        case TaskType.REPLICATE_VIDEOS:
+                            await processReplicateVideo(newTask);
+                            break;
+                        case TaskType.REPLICATE_TEXT:
+                            await processReplicateText(newTask);
                             break;
                         case TaskType.ELEVENLABS:
                             await processElevenLabsTask(newTask);
@@ -40,15 +49,15 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
                         case TaskType.CHATGPT:
                             await processChatGPTTask(newTask);
                             break;
-                        case TaskType.REPLICATE_MINIMAX_VIDEO:
-                            await processMinimaxVideoTask(newTask);
-                            break;
-                        case TaskType.REPLICATE_DEEP_SEEK_R1:
-                            await processDeepSeekR1Task(newTask);
-                            break;
-                        case TaskType.BLACK_FOREST_LABS_FLUX_PRO:
-                            await processReplicateTask(newTask);
-                            break;
+                        // case TaskType.REPLICATE_MINIMAX_VIDEO:
+                        //     await processMinimaxVideoTask(newTask);
+                        //     break;
+                        // case TaskType.REPLICATE_DEEP_SEEK_R1:
+                        //     await processDeepSeekR1Task(newTask);
+                        //     break;
+                        // case TaskType.BLACK_FOREST_LABS_FLUX_PRO:
+                        //     await processReplicateTask(newTask);
+                        //     break;
                         default:
                             console.warn(`Unsupported task type: ${newTask.taskType}`);
                     }
@@ -67,6 +76,5 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
         }
     } catch (error) {
         console.error('Error processing stream event:', error);
-        throw error;
     }
 }

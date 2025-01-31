@@ -81,13 +81,13 @@ export class ReplicateProxyApiStack extends cdk.Stack {
     });
 
     // Create DynamoDB table
-    const replicateProxyTable = new dynamodb.Table(this, 'ReplicateProxyTable', {
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
-      timeToLiveAttribute: 'ttl',
-      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-    });
+    // const replicateProxyTable = new dynamodb.Table(this, 'ReplicateProxyTable', {
+    //   partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    //   removalPolicy: cdk.RemovalPolicy.DESTROY, // For development - change for production
+    //   timeToLiveAttribute: 'ttl',
+    //   stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+    // });
 
     // Create Lambda layer
     const layer = new lambda.LayerVersion(this, 'ReplicateLayer', {
@@ -97,59 +97,59 @@ export class ReplicateProxyApiStack extends cdk.Stack {
     });
 
     // Create Download Images Lambda function
-    const downloadImagesHandler = new lambda.Function(this, 'DownloadImagesHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'stream-processor.handler',
-      layers: [layer],
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
-      environment: {
-        REPLICATE_API_BASE: 'https://api.replicate.com/v1',
-        REPLICATE_API_TOKEN: replicateTokenValue, //!
-        REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
-        IMAGES_BUCKET: imagesBucket.bucketName,
-        DEPLOY_TIME: `${Date.now()}`
-      },
-      timeout: cdk.Duration.seconds(900),
-      memorySize: 512,
-      logRetention: logs.RetentionDays.ONE_DAY,
-    });
+    // const downloadImagesHandler = new lambda.Function(this, 'DownloadImagesHandler', {
+    //   runtime: lambda.Runtime.NODEJS_20_X,
+    //   handler: 'stream-processor.handler',
+    //   layers: [layer],
+    //   code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
+    //   environment: {
+    //     REPLICATE_API_BASE: 'https://api.replicate.com/v1',
+    //     REPLICATE_API_TOKEN: replicateTokenValue, //!
+    //     REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
+    //     IMAGES_BUCKET: imagesBucket.bucketName,
+    //     DEPLOY_TIME: `${Date.now()}`
+    //   },
+    //   timeout: cdk.Duration.seconds(900),
+    //   memorySize: 512,
+    //   logRetention: logs.RetentionDays.ONE_DAY,
+    // });
 
     // Grant permissions to download images handler
-    imagesBucket.grantWrite(downloadImagesHandler);
-    replicateProxyTable.grantReadWriteData(downloadImagesHandler);
+    // imagesBucket.grantWrite(downloadImagesHandler);
+    // replicateProxyTable.grantReadWriteData(downloadImagesHandler);
 
-    downloadImagesHandler.addEventSource(new lambdaEventSources.DynamoEventSource(replicateProxyTable, {
-      startingPosition: lambda.StartingPosition.LATEST,
-      batchSize: 1, // Optional: Customize the batch size for processing
-    }));
+    // downloadImagesHandler.addEventSource(new lambdaEventSources.DynamoEventSource(replicateProxyTable, {
+    //   startingPosition: lambda.StartingPosition.LATEST,
+    //   batchSize: 1, // Optional: Customize the batch size for processing
+    // }));
 
     // Add CloudWatch Logs permissions //todo: probably i dont need all that
-    downloadImagesHandler.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
-      resources: ['*'],
-    }));
+    // downloadImagesHandler.addToRolePolicy(new iam.PolicyStatement({
+    //   effect: iam.Effect.ALLOW,
+    //   actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+    //   resources: ['*'],
+    // }));
 
     // Create Lambda function
-    const handler = new lambda.Function(this, 'ReplicateHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      layers:[
-        layer
-      ],
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
-      environment: {
-        REPLICATE_API_BASE: 'https://api.replicate.com/v1',
-        REPLICATE_API_TOKEN: replicateTokenValue,
-        REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
-        DEPLOY_TIME: `${Date.now()}`,
-      },
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      logRetention: logs.RetentionDays.ONE_DAY,
-    });
+    // const handler = new lambda.Function(this, 'ReplicateHandler', {
+    //   runtime: lambda.Runtime.NODEJS_20_X,
+    //   handler: 'index.handler',
+    //   layers:[
+    //     layer
+    //   ],
+    //   code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambda')),
+    //   environment: {
+    //     REPLICATE_API_BASE: 'https://api.replicate.com/v1',
+    //     REPLICATE_API_TOKEN: replicateTokenValue,
+    //     REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
+    //     DEPLOY_TIME: `${Date.now()}`,
+    //   },
+    //   timeout: cdk.Duration.seconds(30),
+    //   memorySize: 256,
+    //   logRetention: logs.RetentionDays.ONE_DAY,
+    // });
 
-    replicateProxyTable.grantReadWriteData(handler)
+    // replicateProxyTable.grantReadWriteData(handler)
 
     // Create API Gateway
     const api = new apigateway.RestApi(this, 'ReplicateApi', {
@@ -171,15 +171,15 @@ export class ReplicateProxyApiStack extends cdk.Stack {
     });
 
     // Create API Gateway integration
-    const integration = new apigateway.LambdaIntegration(handler, {
-      proxy: true,
-    });
+    // const integration = new apigateway.LambdaIntegration(handler, {
+    //   proxy: true,
+    // });
 
     // Add POST method to root resource
-    api.root.addMethod('POST', integration);
-    api.root.addMethod('GET', integration);
-    api.root.addMethod('DELETE', integration);
-    api.root.addMethod('PUT', integration);
+    // api.root.addMethod('POST', integration);
+    // api.root.addMethod('GET', integration);
+    // api.root.addMethod('DELETE', integration);
+    // api.root.addMethod('PUT', integration);
 
 
     ///
@@ -194,14 +194,12 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       environment: {
         REPLICATE_API_BASE: 'https://api.replicate.com/v1',
         REPLICATE_API_TOKEN: replicateTokenValue,
-        REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
-        DEPLOY_TIME: `${Date.now()}`,
         OPENAI_API_KEY: openaiTokenValue,
         ELEVENLABS_API_KEY: elevenlabsTokenValue,
-        //
         TABLE_NAME: tasksTable.tableName,
         TOPIC_ARN: topic.topicArn,
         BUCKET_NAME: imagesBucket.bucketName,
+        DEPLOY_TIME: `${Date.now()}`,
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -284,22 +282,16 @@ export class ReplicateProxyApiStack extends cdk.Stack {
       exportName: 'ReplicateImagesBucketName',
     });
 
-    new cdk.CfnOutput(this, 'DynamoDBTableName', {
-      value: replicateProxyTable.tableName,
-      description: 'DynamoDB table name for storing job records',
-      exportName: 'ReplicateProxyTableName',
-    });
+    // new cdk.CfnOutput(this, 'DynamoDBTableName', {
+    //   value: replicateProxyTable.tableName,
+    //   description: 'DynamoDB table name for storing job records',
+    //   exportName: 'ReplicateProxyTableName',
+    // });
 
-    new cdk.CfnOutput(this, 'DownloadImagesLambdaArn', {
-      value: downloadImagesHandler.functionArn,
-      description: 'ARN of the download images Lambda function',
-      exportName: 'DownloadImagesLambdaArn',
-    });
-
-    new cdk.CfnOutput(this, 'MainLambdaArn', {
-      value: handler.functionArn,
-      description: 'ARN of the main API Lambda function',
-      exportName: 'MainLambdaArn',
-    });
+    // new cdk.CfnOutput(this, 'MainLambdaArn', {
+    //   value: handler.functionArn,
+    //   description: 'ARN of the main API Lambda function',
+    //   exportName: 'MainLambdaArn',
+    // });
   }
 }

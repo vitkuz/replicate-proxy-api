@@ -6,13 +6,16 @@ export enum TaskStatus {
 }
 
 export enum TaskType {
-    REPLICATE = 'replicate',
+    // REPLICATE = 'replicate',
+    REPLICATE_IMAGES = 'replicate:images',
+    REPLICATE_VIDEOS = 'replicate:videos',
+    REPLICATE_TEXT = 'replicate:text',
     ELEVENLABS = 'elevenlabs',
     CHATGPT = 'chatgpt',
-    REPLICATE_MINIMAX_VIDEO = 'replicate:minimax:video-01',
-    REPLICATE_DEEP_SEEK_R1 = 'replicate:deepseek:r1',
-    REPLICATE_KLING_PRO = 'replicate:kling:pro',
-    BLACK_FOREST_LABS_FLUX_PRO = 'replicate:black-forest-labs:flux-pro',
+    // REPLICATE_MINIMAX_VIDEO = 'replicate:minimax:video-01',
+    // REPLICATE_DEEP_SEEK_R1 = 'replicate:deepseek:r1',
+    // REPLICATE_KLING_PRO = 'replicate:kling:pro',
+    // BLACK_FOREST_LABS_FLUX_PRO = 'replicate:black-forest-labs:flux-pro',
 }
 
 export enum StreamEventType {
