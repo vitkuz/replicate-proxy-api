@@ -14,7 +14,7 @@ export async function generateChatResponse(task: Task){
         // @ts-ignore //todo: fix this
         const response = await openai.chat.completions.create(input);
 
-        console.log(response);
+        console.log(JSON.stringify(response, null, 2));
 
         return response;
     } catch (error) {

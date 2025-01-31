@@ -1,30 +1,30 @@
 import {Task, TaskStatus} from "../types";
 import {partialUpdateRecord} from "../services/dynamo";
-import {getElevenlabsResponse, saveElevenlabsFilesLocally, saveElevenlabsFilesToS3} from "../services/elevenlabs";
+import {
+    getReplicateResponse,
+} from "../services/replicate";
 
-export async function processElevenLabsTask(task: Task): Promise<void> {
+export async function processDeepSeekR1Task(task: Task): Promise<void> {
     try {
         await partialUpdateRecord(task.id, {
             status: TaskStatus.PROCESSING,
             updatedAt: Date.now()
         });
 
-        // validate task input with zod schema
+        // validate task input with zod
 
-        const {data, format} = await getElevenlabsResponse(task);
+        const response = await getReplicateResponse(task);
 
-        const savedFiles = saveElevenlabsFilesLocally(data, format);
-
-        const s3Urls = await saveElevenlabsFilesToS3(savedFiles);
+        const output = (response as unknown as string[]).join('')
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.SUCCEEDED,
-            output: s3Urls,
+            output,
             updatedAt: Date.now()
         });
 
     } catch (error) {
-        console.error('Error processing ElevenLabs task:', error);
+        console.error('Error processing Minimax Video task:', error);
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.FAILED,

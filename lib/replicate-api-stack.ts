@@ -10,16 +10,25 @@ import { Construct } from 'constructs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as path from 'path';
 import 'dotenv/config'
-import {BUCKET_NAME} from "../lambda/services/s3";
 
 export class ReplicateProxyApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     // Get the actual token value
     const replicateTokenValue = process.env.REPLICATE_TOKEN_VALUE;
+    const openaiTokenValue = process.env.OPENAI_API_KEY;
+    const elevenlabsTokenValue = process.env.ELEVENLABS_API_KEY;
 
     if (!replicateTokenValue) {
       throw new Error('REPLICATE_TOKEN_VALUE')
+    }
+
+    if (!openaiTokenValue) {
+      throw new Error('OPENAI_API_KEY')
+    }
+
+    if (!elevenlabsTokenValue) {
+      throw new Error('ELEVENLABS_API_KEY')
     }
 
     // SNS Topic
@@ -187,6 +196,8 @@ export class ReplicateProxyApiStack extends cdk.Stack {
         REPLICATE_API_TOKEN: replicateTokenValue,
         REPLICATE_PROXY_TABLE: replicateProxyTable.tableName,
         DEPLOY_TIME: `${Date.now()}`,
+        OPENAI_API_KEY: openaiTokenValue,
+        ELEVENLABS_API_KEY: elevenlabsTokenValue,
         //
         TABLE_NAME: tasksTable.tableName,
         TOPIC_ARN: topic.topicArn,

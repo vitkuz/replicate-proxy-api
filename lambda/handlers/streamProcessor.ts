@@ -4,6 +4,9 @@ import {unmarshall} from "@aws-sdk/util-dynamodb";
 import {processReplicateTask} from "./tasks/processReplicate";
 import {processElevenLabsTask} from "./tasks/processElevenlabs";
 import {processChatGPTTask} from "./tasks/processChatGpt";
+import {processMinimaxVideoTask} from "./tasks/processMinimaxVideo";
+import {processDeepSeekR1Task} from "./tasks/processDeepSeekR1";
+import {processKlingProTask} from "./tasks/processKlingPro";
 
 export async function handler(event: DynamoDBStreamEvent): Promise<void> {
     try {
@@ -20,7 +23,7 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
             const oldTask = streamEvent.dynamodb.OldImage ? unmarshall(streamEvent.dynamodb.OldImage) as Task : null;
 
             // Skip if task is already completed
-            if (newTask && (newTask.status === TaskStatus.SUCCEEDED || newTask.status === TaskStatus.FAILED)) {
+            if (newTask && (newTask.status !== TaskStatus.STARTING)) {
                 console.log(`Skipping completed task ${newTask.id} with status ${newTask.status}`);
                 continue;
             }
@@ -36,6 +39,15 @@ export async function handler(event: DynamoDBStreamEvent): Promise<void> {
                             break;
                         case TaskType.CHATGPT:
                             await processChatGPTTask(newTask);
+                            break;
+                        case TaskType.REPLICATE_MINIMAX_VIDEO:
+                            await processMinimaxVideoTask(newTask);
+                            break;
+                        case TaskType.REPLICATE_DEEP_SEEK_R1:
+                            await processDeepSeekR1Task(newTask);
+                            break;
+                        case TaskType.BLACK_FOREST_LABS_FLUX_PRO:
+                            await processReplicateTask(newTask);
                             break;
                         default:
                             console.warn(`Unsupported task type: ${newTask.taskType}`);

@@ -1,6 +1,6 @@
 import {Task, TaskStatus} from "../types";
 import {partialUpdateRecord} from "../services/dynamo";
-import {getReplicateResponse} from "../services/replicate";
+import {getReplicateResponse, saveReplicationFilesLocally, saveReplicationFilesToS3} from "../services/replicate";
 
 export async function processReplicateTask(task: Task): Promise<void> {
     try {
@@ -9,17 +9,17 @@ export async function processReplicateTask(task: Task): Promise<void> {
             updatedAt: Date.now()
         });
 
+        // validate task input with zod
+
         const response = await getReplicateResponse(task);
 
-        await partialUpdateRecord(task.id, {
-            status: TaskStatus.SUCCEEDED,
-            output: response,
-            updatedAt: Date.now()
-        });
+        const savedFiles = await saveReplicationFilesLocally(response as string[]);
+
+        const s3Urls = await saveReplicationFilesToS3(savedFiles);
 
         await partialUpdateRecord(task.id, {
             status: TaskStatus.SUCCEEDED,
-            output: response,
+            output: s3Urls,
             updatedAt: Date.now()
         });
 

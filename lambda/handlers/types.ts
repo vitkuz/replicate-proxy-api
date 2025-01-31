@@ -9,7 +9,10 @@ export enum TaskType {
     REPLICATE = 'replicate',
     ELEVENLABS = 'elevenlabs',
     CHATGPT = 'chatgpt',
-    PERPLEXITY = 'perplexity'
+    REPLICATE_MINIMAX_VIDEO = 'replicate:minimax:video-01',
+    REPLICATE_DEEP_SEEK_R1 = 'replicate:deepseek:r1',
+    REPLICATE_KLING_PRO = 'replicate:kling:pro',
+    BLACK_FOREST_LABS_FLUX_PRO = 'replicate:black-forest-labs:flux-pro',
 }
 
 export enum StreamEventType {
@@ -49,6 +52,12 @@ export interface PerplexityInput {
     maxTokens?: number;
     topP?: number;
     topK?: number;
+}
+
+export interface MinimaxVideoInput {
+    prompt: string;
+    prompt_optimizer?: boolean;
+    subject_reference?: string;
 }
 
 export interface Task {
